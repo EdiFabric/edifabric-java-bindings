@@ -177,7 +177,7 @@ status. Buffer growth (`InsufficientCapacity`) is retried automatically.
 | --- | --- |
 | Loading | `loadLibrary`, `setLibraryPath`, `getResolvedLibraryPath` |
 | Lifecycle | `initLogger`, `shutdownLogger`, `clearCache` |
-| Licensing | `installLicense`, `getAppVersion`, `getToken`, `validateToken`, `setToken`, `getTokenExpiration`, `getTokenExpirationTicks`, `setSerial` |
+| Licensing | `ensureToken`, `getAppVersion`, `getToken`, `validateToken`, `setToken`, `getTokenExpiration`, `getTokenExpirationTicks`, `setSerial` |
 | Model map | `setMap` |
 | Processing | `parse`, `startSplit`, `split`, `build`, `startMerge`, `merge`, `getResult` |
 | Errors | `getError`, `freeError`, `check` |
@@ -192,7 +192,7 @@ back to JNA's `Native.free`.
 
 > [!NOTE]
 > The examples are available with a free plan which can be used only with Serial model validation.
-> You don't need to call `installLicense` with the free plan, and the only licensing call must be `setSerial`.
+> You don't need to call `ensureToken` with the free plan, and the only licensing call must be `setSerial`.
 
 The serial key for the free plan is:
 ```
@@ -203,13 +203,14 @@ Two models are supported. Tokens are recommended for containers, air-gapped
 machines, and high volume; serials are simplest when always online.
 
 ```java
-// Token: fetch once with internet access, cache it, set it at process start
+// Token: refresh when expiry is within N seconds, or fetch/set explicitly
+EdiFabricX12.ensureToken(serial, 3600);   // refresh if expiring within 1 hour
+// or:
 String token = EdiFabricX12.getToken(serial);
 EdiFabricX12.setToken(token);
 System.out.println(EdiFabricX12.getTokenExpiration());   // Instant, or null when unset
 
-// Serial: register the machine once, then authorize per process
-EdiFabricX12.installLicense(serial);
+// Serial: authorize per process against the license server
 EdiFabricX12.setSerial(serial);
 ```
 
@@ -328,13 +329,16 @@ are exposed as `ErrorCode`, and `getError(code)` returns the message.
 | 626 | `merge` called before `startMerge` |
 | 627 | Incorrect or null output pointer |
 | 628 | Incorrect serial |
-| 629 | License not installed, run `installLicense` |
+| 629 | License not installed |
 | 630 | Application maximum version exceeded |
 | 631 | Token expired |
 | 632 | Token missing |
 | 633 | Maximum licenses exceeded |
 | 634 | License snapshot not found |
-| 635 | License not set, call `setToken` or `setSerial` |
+| 635 | License not set, call `setToken`, `ensureToken`, or `setSerial` |
+| 636 | Rate exceeded |
+| 637 | Invalid JSON |
+| 638 | Incorrect license |
 
 ## Troubleshooting
 
@@ -345,10 +349,10 @@ not on any searched path. Pass `EdiFabricX12.loadLibrary("/path/to/library")` or
 **Error 615 on parse** — call `setMap` before parsing or splitting. `clearCache`
 resets the map, so reload it afterwards.
 
-**Error 635 on parse** — authorize first with `setToken` or `setSerial`.
+**Error 635 on parse** — authorize first with `setToken`, `ensureToken`, or `setSerial`.
 
-**Error 633 on installLicense** — the plan's machine quota is used up. Switch to
-token authorization or contact support.
+**Error 633** — the plan's machine quota is used up. Switch to token authorization
+or contact support.
 
 ## Links
 

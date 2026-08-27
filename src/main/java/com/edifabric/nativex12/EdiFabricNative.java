@@ -21,7 +21,7 @@ interface EdiFabricNative extends Library {
 
     /* Licensing */
 
-    int install_license(byte[] serial, int serialLen);
+    int ensure_token(byte[] serial, int serialLen, int seconds);
 
     int get_app_version(IntByReference appVersion);
 

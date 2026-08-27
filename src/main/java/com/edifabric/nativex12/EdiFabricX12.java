@@ -286,10 +286,14 @@ public final class EdiFabricX12 {
     /* Licensing                                                           */
     /* ------------------------------------------------------------------ */
 
-    /** Register this machine once. Requires internet access. */
-    public static void installLicense(String serial) {
+    /**
+     * Cache a token for runtime authorization against the license server.
+     * Retrieves a new token if the cached token expires within the specified
+     * number of seconds.
+     */
+    public static void ensureToken(String serial, int seconds) {
         byte[] bytes = utf8(serial);
-        check(lib().install_license(bytes, bytes.length), "install_license");
+        check(lib().ensure_token(bytes, bytes.length, seconds), "ensure_token");
     }
 
     /** Return the library application version. */

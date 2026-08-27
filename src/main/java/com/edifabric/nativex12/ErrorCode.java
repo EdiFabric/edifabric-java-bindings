@@ -30,7 +30,10 @@ public enum ErrorCode {
     TOKEN_MISSING(632),
     MAX_LICENSES_EXCEEDED(633),
     LICENSE_SNAPSHOT_MISSING(634),
-    LICENSE_NOT_SET(635);
+    LICENSE_NOT_SET(635),
+    RATE_EXCEEDED(636),
+    INVALID_JSON(637),
+    INCORRECT_LICENSE(638);
 
     private final int value;
 
