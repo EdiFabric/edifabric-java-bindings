@@ -1,22 +1,23 @@
 package com.edifabric.nativex12;
 
-/** Library-level error codes. Validation codes come from the engine. */
+/** Library-level status codes. Validation codes come from the engine. */
 public enum ErrorCode {
+    SUCCESS(0),
     INSUFFICIENT_CAPACITY(1),
     UNKNOWN(501),
     NO_CONNECTION(502),
-    INVALID_MAP(503),
+    MODEL_MAP_INVALID(503),
     INCORRECT_INPUT(611),
-    LOGGER_INIT(612),
-    MAP_DESERIALIZE(613),
+    LOGGER_INITIALIZATION(612),
+    MAP_DESERIALIZATION(613),
     INCORRECT_CAPACITY(614),
     MAP_NOT_SET(615),
     INCORRECT_MODE(616),
     NO_JSON(617),
     VALIDATION_UNAVAILABLE(618),
-    VALIDATION_SERIALIZE(619),
+    VALIDATION_SERIALIZATION(619),
     INCORRECT_TOKEN(620),
-    CONFIG_DESERIALIZE(621),
+    CONFIG_DESERIALIZATION(621),
     SPLIT_SEGMENT_ID_MISSING(622),
     SPLIT_NOT_STARTED(623),
     NO_RESULT(624),
@@ -33,7 +34,8 @@ public enum ErrorCode {
     LICENSE_NOT_SET(635),
     RATE_EXCEEDED(636),
     INVALID_JSON(637),
-    INCORRECT_LICENSE(638);
+    INCORRECT_LICENSE(638),
+    LICENSE_QUOTA_EXCEEDED(639);
 
     private final int value;
 

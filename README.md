@@ -1,4 +1,4 @@
-# ediFabric Native X12 — Java bindings
+# ediFabric Native X12 - Java bindings
 
 **ediFabric Native** is a self-contained, high-performance X12 EDI native shared library. It converts X12 EDI to JSON (and back),
 validates transaction sets, and generates acknowledgments — callable from **any
@@ -28,25 +28,30 @@ Java [JNA](https://github.com/java-native-access/jna) bindings for [ediFabric Na
 | Linux | `edifabric-x12-tools.so` |
 | macOS | `edifabric-x12-tools.dylib` |
 
-[Download **ediFabric Native** Library](https://support.edifabric.com/hc/en-us/articles/37289848931869-Download)
+1. [Sign up free for **Community**](https://www.edifabric.com/pricing.html) to get an evaluation serial key. Community never expires, requires no credit card, and is limited to 250 operations per day for non-production use. After signup, retrieve your serial from [Your Account](https://support.edifabric.com/hc/en-us/articles/360007159031-Your-Account-API-key).
+2. [Download the **ediFabric Native** library](https://support.edifabric.com/hc/en-us/articles/37289848931869-Download).
 
 Plus your **model files** (per transaction set) and a **map file** that tells the
 engine where to find them. See [Model map](#model-map) for details.
 
 ## Getting started
 
-**Download the library** from [here](https://support.edifabric.com/hc/en-us/articles/37289848931869-Download).
-Put the native library in the repository root, then run the walkthrough:
+**Sign up free for Community** at [edifabric.com/pricing](https://www.edifabric.com/pricing.html)
+to get an evaluation serial key, then **download the library** from
+[here](https://support.edifabric.com/hc/en-us/articles/37289848931869-Download).
+Put the native library in the repository root, then run the walkthrough with your serial:
 
 ```bash
-mvn -q exec:java
+mvn -q exec:java -Dexec.args="--serial YOUR_SERIAL"
 ```
 
-It authorizes with the free plan serial, loads the model map, and calls every
-function in the ABI, printing what each one returns.
+It authorizes with your Community (or paid) serial, loads the model map, and calls
+every function in the ABI, printing what each one returns.
 
 ```
+======================================================================
 Parse: parse (mode 2, JSON + validation report)
+======================================================================
   1754 bytes total, validation starts at offset 1708
   validation -> {"errors":[],"errors_count":0,"data_count":10}
 ```
@@ -54,13 +59,15 @@ Parse: parse (mode 2, JSON + validation report)
 Options:
 
 ```bash
-mvn -q exec:java -Dexec.args="--serial YOUR_SERIAL"   # use your own license
+mvn -q exec:java -Dexec.args="--serial YOUR_SERIAL"   # Community or paid serial (required)
 mvn -q exec:java -Dexec.args="--lib /opt/edifabric"    # library file or folder
 ```
 
+You can also set `EDIFABRIC_SERIAL` instead of passing `--serial`.
+
 The library path is resolved from `--lib`, then `EDIFABRIC_X12_LIB`, then the
 working directory and a few levels above the classpath root. The serial comes from
-`--serial`, then `EDIFABRIC_SERIAL`, then the built-in free plan serial.
+`--serial`, then `EDIFABRIC_SERIAL`.
 
 All strings and payloads cross the boundary as **UTF‑8 byte buffers**
 (`pointer + length`). Every function returns `0` on success or a non-zero
@@ -83,22 +90,15 @@ import com.edifabric.nativex12.EdiFabricX12;
 import com.edifabric.nativex12.ParseMode;
 import com.edifabric.nativex12.ParseResult;
 
-String serial = "your-serial";
+String serial = "your-serial";   // from your Community or paid plan
 
 EdiFabricX12.loadLibrary();              // or loadLibrary("C:\\libs\\edifabric-x12-tools.dll")
-EdiFabricX12.setSerial(serial);          // or setToken(token) for offline use (Enterprise only)
+EdiFabricX12.setSerial(serial);          // Community: setSerial. Developer: prefer ensureToken. Enterprise: prefer setToken.
 EdiFabricX12.setMap("{\"default\":\"" + serial + "\",\"maps\":{}}");
 
-String edi = Files.readString(Path.of("purchase-order.edi"));
-ParseResult result = EdiFabricX12.parse(edi, ParseMode.JSON);
+byte[] edi = Files.readAllBytes(Path.of("837p.txt"));
+ParseResult result = EdiFabricX12.parse(new String(edi, StandardCharsets.UTF_8), ParseMode.JSON);
 System.out.println(result.getTransactions());
-```
-
-Read a file from a subfolder of the project:
-
-```java
-Path edi = Path.of("edi", "837p.txt");
-String text = Files.readString(edi);
 ```
 
 ### Validation and acknowledgments
@@ -191,44 +191,87 @@ back to JNA's `Native.free`.
 ## Licensing
 
 > [!NOTE]
-> The examples are available with a free plan which can be used only with Serial model validation.
-> You don't need to call `ensureToken` with the free plan, and the only licensing call must be `setSerial`.
+> Sign up free for the [Community plan](https://www.edifabric.com/pricing.html)
+> to get an evaluation serial key. Community never expires, requires no credit
+> card, and is for non-production evaluation, learning, and prototyping
+> (250 operations per day). After signup, copy your serial from
+> [Your Account](https://support.edifabric.com/hc/en-us/articles/360007159031-Your-Account-API-key).
+>
+> If you hit the Community daily quota, native calls return [error 639](#error-codes);
+> upgrade at [edifabric.com/pricing](https://www.edifabric.com/pricing.html) if you
+> want to continue.
 
-The serial key for the free plan is:
-```
-bd96a836feca45cb91c86ee65d281f52
-```
-
-Two models are supported. Tokens are recommended for containers, air-gapped
-machines, and high volume; serials are simplest when always online.
+| Plan | What works | Recommended |
+| --- | --- | --- |
+| Community | `setSerial` only | `setSerial` |
+| Developer | `setSerial` and `ensureToken` (`ensureToken` caches the result for 1 day) | `ensureToken` |
+| Enterprise | `setSerial`, `ensureToken`, `getToken` / `setToken` | `setToken` (offline tokens) |
 
 ```java
-// Token: refresh when expiry is within N seconds, or fetch/set explicitly
-EdiFabricX12.ensureToken(serial, 3600);   // refresh if expiring within 1 hour
-// or:
-String token = EdiFabricX12.getToken(serial);
-EdiFabricX12.setToken(token);
+// Community: authorize per process against the license server
+EdiFabricX12.setSerial(serial);
+
+// Developer (recommended): 1-day built-in cache; refreshes if the token expires within N seconds
+EdiFabricX12.ensureToken(serial, 3600);
 System.out.println(EdiFabricX12.getTokenExpiration());   // Instant, or null when unset
 
-// Serial: authorize per process against the license server
+// Developer (also works): same as Community, online check per process
 EdiFabricX12.setSerial(serial);
+
+// Enterprise (recommended): fetch / validate / set an offline token yourself
+String token = EdiFabricX12.getToken(serial);
+EdiFabricX12.validateToken(token);
+EdiFabricX12.setToken(token);
 ```
 
 ## Model map
 
 `setMap` tells the engine where to find transaction-set models. Keys are
 `message:version`. Set `default` to your serial to resolve unmapped transaction
-sets through the online spec service, or leave it empty/`null` and map everything locally.
+sets through the online spec service, or leave it `null` (or `""`) and map
+everything locally.
+
+The example builds that JSON at runtime instead of hard-coding paths. Online
+fallback is a `JSONObject` with `default` set to your serial:
+
+```java
+JSONObject map = new JSONObject();
+map.put("default", serial);
+map.put("maps", new JSONObject());
+
+EdiFabricX12.setMap(map.toString());
+```
+
+For local models, load a map file and rewrite each entry's `location` to the
+folder that actually holds the JSON files (see `demoSetLocalMap` in
+`ExampleAllFunctions.java`):
+
+```java
+Path mapLocation = Path.of("map").toAbsolutePath().normalize();
+JSONObject localMap = new JSONObject(Files.readString(mapLocation.resolve("map.json")));
+JSONObject maps = localMap.getJSONObject("maps");
+for (String key : maps.keySet()) {
+    maps.getJSONObject(key).put("location", mapLocation.toString());
+}
+
+EdiFabricX12.setMap(localMap.toString());
+```
+
+`map.json` lists each transaction set; `location` is filled in at runtime so the
+same file works from any working directory:
 
 ```json
 {
-  "default": null,
+  "default": "",
   "maps": {
-    "837:005010X222A1": { "type": 1, "name": "837P.json", "location": "/opt/models" },
-    "850:005010":       { "type": 1, "name": "850.json",  "location": "/opt/models" }
+    "837:005010X222A1": { "type": 1, "name": "model837P.json", "location": "" },
+    "834:005010X220A1": { "type": 1, "name": "model834.json",  "location": "" }
   }
 }
 ```
+
+You can also mix both: keep `default` as your serial and add local entries under
+`maps` for the transaction sets you ship on disk.
 
 All X12 transactions, such as 837P, 834, 850, etc. are represented as proprietary JSON.
 Download a standard model from [EdiNation Spec Library](https://edination.edifabric.com/edi-spec-library.html),
@@ -305,40 +348,50 @@ completion without another split or merge interleaving from a different thread.
 
 `0` is success and `1` means the output buffer was too small. Library-level codes
 are exposed as `ErrorCode`, and `getError(code)` returns the message.
+Validation codes (elements, segments, transaction sets, groups, and interchanges)
+appear in the parse report when `mode ≥ 2`.
+
+**Error 639** means the Community (evaluation) daily quota was exceeded.
+Upgrade your plan at [edifabric.com/pricing](https://www.edifabric.com/pricing.html)
+if you wish to continue.
+
+### Parser and library
 
 | Code | Meaning |
 | --- | --- |
-| 501 | Unknown |
-| 502 | No internet access to the authentication API |
-| 503 | Local map file has invalid paths or file names |
-| 611 | Incorrect or empty input |
-| 612 | Logger initialization failed |
-| 613 | Map JSON could not be deserialized |
-| 614 | Negative output capacity |
-| 615 | Model map not set, call `setMap` first |
-| 616 | Mode must be 1, 2, or 3 |
-| 617 | No JSON produced |
-| 618 | Validation result unavailable |
-| 619 | Validation report serialization failed |
-| 620 | Incorrect token |
-| 621 | Config JSON could not be deserialized |
-| 622 | Split `segment_id` missing or empty |
-| 623 | `split` called before `startSplit` |
-| 624 | No result available for `getResult` |
-| 625 | `getResult` buffer size mismatch |
-| 626 | `merge` called before `startMerge` |
-| 627 | Incorrect or null output pointer |
-| 628 | Incorrect serial |
-| 629 | License not installed |
-| 630 | Application maximum version exceeded |
-| 631 | Token expired |
-| 632 | Token missing |
-| 633 | Maximum licenses exceeded |
-| 634 | License snapshot not found |
-| 635 | License not set, call `setToken`, `ensureToken`, or `setSerial` |
-| 636 | Rate exceeded |
-| 637 | Invalid JSON |
-| 638 | Incorrect license |
+| 1 | The suggested output buffer size is too small |
+| 501 | Unexpected error. Contact support@edifabric.com and include a sample project/file to reproduce the issue |
+| 502 | No connection to EdiNation API |
+| 503 | The model map configuration is invalid. Check the paths and the model file names are correct |
+| 611 | The input buffer is either null or its size is nill |
+| 612 | The logger failed to log |
+| 613 | The map configuration file is invalid |
+| 614 | The output capacity must be positive |
+| 615 | Models map must be set before parsing or splitting |
+| 616 | Mode must be any of: 1 - Parse, 2 - Parse and Validate, 3 - Parse and Validate and Acknowledge |
+| 617 | Parser failed. Contact support@edifabric.com and include a sample project/file to reproduce the issue |
+| 618 | Validation failed. Contact support@edifabric.com and include a sample project/file to reproduce the issue |
+| 619 | Validation serializer failed. Contact support@edifabric.com and include a sample project/file to reproduce the issue |
+| 620 | The token is invalid. Contact support@edifabric.com for assistance |
+| 621 | The configuration file is invalid |
+| 622 | The split segment ID must not be blank |
+| 623 | Call `startSplit` before splitting |
+| 624 | The result can't be retrieved. Contact support@edifabric.com and include a sample project/file to reproduce the issue |
+| 625 | Result buffer size mismatched |
+| 626 | Call `startMerge` before merging |
+| 627 | The output buffer is either null or its size is nill |
+| 628 | The serial number is missing or incorrect. `getToken` doesn't work with Developer license |
+| 629 | License was not installed. Contact support@edifabric.com for assistance |
+| 630 | No license to use this version. Contact support@edifabric.com for assistance |
+| 631 | The token has expired. Get and set a new token to continue |
+| 632 | The token is missing. Set token to continue |
+| 633 | Reached the maximum number of licenses. Set token to continue |
+| 634 | Environment not recognized for licensing or reached the maximum number of licenses |
+| 635 | Serial or token not found. Either set token or serial to continue |
+| 636 | The rate to get serials was exceeded for your license. Wait for 60 seconds and try again or upgrade your license |
+| 637 | Invalid JSON. Enable logging for additional details |
+| 638 | The operation is not supported by your license |
+| 639 | Community daily quota exceeded. Your license has reached its daily call limit. Upgrade your plan at edifabric.com to continue |
 
 ## Troubleshooting
 
@@ -349,13 +402,20 @@ not on any searched path. Pass `EdiFabricX12.loadLibrary("/path/to/library")` or
 **Error 615 on parse** — call `setMap` before parsing or splitting. `clearCache`
 resets the map, so reload it afterwards.
 
-**Error 635 on parse** — authorize first with `setToken`, `ensureToken`, or `setSerial`.
+**Error 628 / 635 on parse** — authorize first: `setSerial` on Community,
+`ensureToken` (or `setSerial`) on Developer, or `setToken` on Enterprise.
 
-**Error 633** — the plan's machine quota is used up. Switch to token authorization
-or contact support.
+**Error 633 on ensure_token / get_token** — the plan's machine quota is used up.
+Contact support.
+
+**Error 639** — the Community (evaluation) daily quota was exceeded. Wait until
+the next day, or [upgrade your plan](https://www.edifabric.com/pricing.html) if
+you wish to continue.
 
 ## Links
 
 - [Documentation](https://support.edifabric.com/hc/en-us/articles/37276016388125-Introduction)
 - [Product page](https://www.edifabric.com/edifabric-native.html)
+- [Community plan (free signup)](https://www.edifabric.com/pricing.html)
+- [Your Account](https://support.edifabric.com/hc/en-us/articles/360007159031-Your-Account-API-key)
 - Support: support@edifabric.com
