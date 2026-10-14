@@ -14,13 +14,34 @@ Java [JNA](https://github.com/java-native-access/jna) bindings for [ediFabric Na
 | `src/main/java/com/edifabric/nativex12/EdiFabricNative.java` | JNA interface mirroring the C header |
 | `src/main/java/com/edifabric/nativex12/example/ExampleAllFunctions.java` | runnable walkthrough of every entry point |
 | `c-abi-edifabric_x12_tools.h` | the C header these bindings mirror |
+| `PUBLISHING.md` | how the jar is built and published to Maven Central |
+
+## Install
+
+Add the bindings from Maven Central:
+
+```xml
+<dependency>
+  <groupId>com.edifabric</groupId>
+  <artifactId>edifabric-x12-native</artifactId>
+  <version>1.1.1</version>
+</dependency>
+```
+
+Gradle: `implementation("com.edifabric:edifabric-x12-native:1.1.1")`.
+
+The jar bundles the ediFabric Native library for Windows x64, Linux x64 and arm64
+(glibc 2.34 or later), and macOS arm64 (12 or later), and brings in JNA. On first use it
+copies the library for your platform to `java.io.tmpdir/edifabric-x12/` and loads it
+from there. A library you pass to `loadLibrary(path)`, set in `EDIFABRIC_X12_LIB`, or
+put in the working directory takes precedence over the bundled one.
 
 ## Requirements
 
 - Java 8 or later
 - Apache Maven 3.6+
 - 64-bit Windows, Linux, or macOS
-- The native library for your platform:
+- The native library for your platform (bundled in the Maven Central jar; download it when you build from a clone):
 
 | Platform | File |
 | --- | --- |
@@ -66,7 +87,8 @@ mvn -q exec:java -Dexec.args="--lib /opt/edifabric"    # library file or folder
 You can also set `EDIFABRIC_SERIAL` instead of passing `--serial`.
 
 The library path is resolved from `--lib`, then `EDIFABRIC_X12_LIB`, then the
-working directory and a few levels above the classpath root. The serial comes from
+working directory and a few levels above the classpath root, and finally the library
+bundled in the jar. The serial comes from
 `--serial`, then `EDIFABRIC_SERIAL`.
 
 All strings and payloads cross the boundary as **UTF‑8 byte buffers**
@@ -75,7 +97,8 @@ All strings and payloads cross the boundary as **UTF‑8 byte buffers**
 
 ## Usage
 
-Add the sources (or built jar) and the JNA dependency to your project:
+Add the `com.edifabric:edifabric-x12-native` dependency (see [Install](#install)), or
+copy the sources into your project and add JNA:
 
 ```xml
 <dependency>

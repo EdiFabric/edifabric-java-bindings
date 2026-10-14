@@ -6,11 +6,16 @@ import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.LongByReference;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -68,7 +73,8 @@ public final class EdiFabricX12 {
      * Load and bind the native library.
      *
      * @param path may be the library file or the folder containing it; null to search
-     *             {@code EDIFABRIC_X12_LIB}, this class's folder, its parent, and the cwd
+     *             {@code EDIFABRIC_X12_LIB}, the cwd, this class's folder and its parents,
+     *             and finally the library bundled in the jar
      * @return the loaded JNA library instance
      */
     public static EdiFabricNative loadLibrary(String path) {
@@ -87,23 +93,29 @@ public final class EdiFabricX12 {
                     continue;
                 }
                 try {
-                    String absolute = candidate.toAbsolutePath().normalize().toString();
-                    EdiFabricNative loaded = Native.load(absolute, EdiFabricNative.class);
-                    lib = loaded;
-                    resolvedLibraryPath = absolute;
-                    return loaded;
+                    return bind(candidate);
                 } catch (UnsatisfiedLinkError error) {
                     lastError = new IOException(error.getMessage(), error);
                 }
             }
 
-            StringBuilder tried = new StringBuilder();
-            for (int i = 0; i < candidates.size(); i++) {
-                if (i > 0) {
-                    tried.append(", ");
+            String resource = bundledResource();
+            try {
+                Path bundled = extractBundled(resource);
+                if (bundled != null) {
+                    return bind(bundled);
                 }
-                tried.append(candidates.get(i));
+            } catch (IOException error) {
+                lastError = error;
+            } catch (UnsatisfiedLinkError error) {
+                lastError = new IOException(error.getMessage(), error);
             }
+
+            StringBuilder tried = new StringBuilder();
+            for (Path candidate : candidates) {
+                tried.append(candidate).append(", ");
+            }
+            tried.append("classpath:/").append(resource);
             throw new UnsatisfiedLinkError(
                     "Could not load " + platformFileName() + ". Tried: " + tried
                             + ". Last error: " + (lastError == null ? "none" : lastError.getMessage()));
@@ -113,6 +125,76 @@ public final class EdiFabricX12 {
     /** Load using the current path hint / environment / search paths. */
     public static EdiFabricNative loadLibrary() {
         return loadLibrary(null);
+    }
+
+    private static EdiFabricNative bind(Path file) {
+        String absolute = file.toAbsolutePath().normalize().toString();
+        EdiFabricNative loaded = Native.load(absolute, EdiFabricNative.class);
+        lib = loaded;
+        resolvedLibraryPath = absolute;
+        return loaded;
+    }
+
+    /** Classpath location of the library the published jar bundles for this platform. */
+    static String bundledResource() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        String arch = System.getProperty("os.arch", "").toLowerCase();
+        String rid = os.contains("win") ? "win" : os.contains("mac") || os.contains("darwin") ? "osx" : "linux";
+        rid += arch.equals("aarch64") || arch.equals("arm64") ? "-arm64" : "-x64";
+        return "com/edifabric/nativex12/native/" + rid + "/" + platformFileName();
+    }
+
+    /**
+     * Copies the bundled library to {@code java.io.tmpdir/edifabric-x12/<sha-256>/}, because
+     * the OS can only load it from a file. The hash keeps different versions apart and lets
+     * later runs reuse the copy. Returns null when the jar has no library for this platform.
+     */
+    private static Path extractBundled(String resource) throws IOException {
+        byte[] data;
+        try (InputStream in = EdiFabricX12.class.getClassLoader().getResourceAsStream(resource)) {
+            if (in == null) {
+                return null;
+            }
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] chunk = new byte[1 << 16];
+            for (int n; (n = in.read(chunk)) > 0; ) {
+                buffer.write(chunk, 0, n);
+            }
+            data = buffer.toByteArray();
+        }
+
+        String hash;
+        try {
+            StringBuilder hex = new StringBuilder();
+            for (byte b : MessageDigest.getInstance("SHA-256").digest(data)) {
+                hex.append(String.format("%02x", b));
+            }
+            hash = hex.substring(0, 16);
+        } catch (NoSuchAlgorithmException error) {
+            throw new IOException(error);
+        }
+
+        Path dir = Paths.get(System.getProperty("java.io.tmpdir"), "edifabric-x12", hash);
+        Path target = dir.resolve(platformFileName());
+        if (Files.isRegularFile(target) && Files.size(target) == data.length) {
+            return target;
+        }
+        Files.createDirectories(dir);
+        Path partial = Files.createTempFile(dir, "lib", ".part");
+        try {
+            Files.write(partial, data);
+            try {
+                Files.move(partial, target, StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException raced) {
+                // Another process may have extracted (and on Windows locked) the same file.
+                if (!Files.isRegularFile(target) || Files.size(target) != data.length) {
+                    throw raced;
+                }
+            }
+        } finally {
+            Files.deleteIfExists(partial);
+        }
+        return target;
     }
 
     private static EdiFabricNative lib() {

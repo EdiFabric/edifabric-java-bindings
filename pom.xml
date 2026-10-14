@@ -6,9 +6,33 @@
 
   <groupId>com.edifabric</groupId>
   <artifactId>edifabric-x12-native</artifactId>
-  <version>1.0.0</version>
+  <version>1.1.1</version>
   <name>ediFabric Native X12 — Java bindings</name>
-  <description>JNA bindings and examples for the ediFabric Native X12 shared library</description>
+  <description>JNA bindings for the ediFabric Native X12 shared library, with the library bundled for Windows x64, Linux x64/arm64 and macOS arm64</description>
+  <url>https://github.com/EdiFabric/edifabric-java-bindings</url>
+
+  <licenses>
+    <license>
+      <name>EdiFabric End User License Agreement</name>
+      <url>https://www.edifabric.com/files/eula.pdf</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>EdiFabric</name>
+      <email>support@edifabric.com</email>
+      <organization>EdiFabric</organization>
+      <organizationUrl>https://www.edifabric.com</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/EdiFabric/edifabric-java-bindings.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/EdiFabric/edifabric-java-bindings.git</developerConnection>
+    <url>https://github.com/EdiFabric/edifabric-java-bindings</url>
+  </scm>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -16,6 +40,8 @@
     <maven.compiler.target>1.8</maven.compiler.target>
     <jna.version>5.17.0</jna.version>
     <json.version>20250517</json.version>
+    <natives.dir>${project.basedir}/natives</natives.dir>
+    <central.autoPublish>false</central.autoPublish>
   </properties>
 
   <dependencies>
@@ -24,14 +50,35 @@
       <artifactId>jna</artifactId>
       <version>${jna.version}</version>
     </dependency>
+    <!-- Only the bundled example uses org.json; the bindings do not need it. -->
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
       <version>${json.version}</version>
+      <optional>true</optional>
     </dependency>
   </dependencies>
 
   <build>
+    <resources>
+      <resource>
+        <directory>${natives.dir}</directory>
+        <targetPath>com/edifabric/nativex12/native</targetPath>
+        <includes>
+          <include>*/edifabric-x12-tools.*</include>
+        </includes>
+        <excludes>
+          <exclude>**/*.asc</exclude>
+        </excludes>
+      </resource>
+      <resource>
+        <directory>${project.basedir}</directory>
+        <targetPath>META-INF</targetPath>
+        <includes>
+          <include>LICENSE.md</include>
+        </includes>
+      </resource>
+    </resources>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -64,4 +111,103 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <!-- mvn -Prelease deploy: sources, javadoc, signatures, and upload to Maven Central. -->
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <version>3.6.1</version>
+            <executions>
+              <execution>
+                <id>require-natives</id>
+                <goals>
+                  <goal>enforce</goal>
+                </goals>
+                <configuration>
+                  <rules>
+                    <requireFilesExist>
+                      <message>Run scripts/fetch-natives first: the release jar must bundle all four libraries.</message>
+                      <files>
+                        <file>${natives.dir}/win-x64/edifabric-x12-tools.dll</file>
+                        <file>${natives.dir}/linux-x64/edifabric-x12-tools.so</file>
+                        <file>${natives.dir}/linux-arm64/edifabric-x12-tools.so</file>
+                        <file>${natives.dir}/osx-arm64/edifabric-x12-tools.dylib</file>
+                      </files>
+                    </requireFilesExist>
+                  </rules>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>3.3.1</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>3.11.2</version>
+            <configuration>
+              <source>8</source>
+              <doclint>none</doclint>
+              <quiet>true</quiet>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.2.8</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+                <configuration>
+                  <gpgArguments>
+                    <arg>--pinentry-mode</arg>
+                    <arg>loopback</arg>
+                  </gpgArguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>0.8.0</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <autoPublish>${central.autoPublish}</autoPublish>
+              <waitUntil>validated</waitUntil>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
