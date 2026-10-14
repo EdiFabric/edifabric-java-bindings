@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build the jar with the four bundled libraries, smoke-test it, and upload it to Maven Central.
 #
-# Needs Maven 3.9+, JDK 11+ (for the smoke test), and for a real release gpg with the signing key
+# Needs JDK 11+ (Maven comes from ./mvnw), and for a real release gpg with the signing key
 # plus a "central" server in ~/.m2/settings.xml holding a Central Portal user token.
 #
 #   scripts/release.sh --dry-run        build and smoke-test without signing or uploading
@@ -19,7 +19,9 @@ for arg in "$@"; do
         *) echo "unknown option: $arg" >&2; exit 2 ;;
     esac
 done
-mvn=${MAVEN:-mvn}
+# The wrapper pins Maven 3.9: Maven 3.10 leaves maven-metadata-local.xml in the bundle, which Central rejects.
+mvn=${MAVEN:-./mvnw}
+[ "$mvn" = ./mvnw ] && chmod +x mvnw
 
 $skip_fetch || bash scripts/fetch-natives.sh natives
 

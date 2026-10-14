@@ -42,6 +42,7 @@
     <json.version>20250517</json.version>
     <natives.dir>${project.basedir}/natives</natives.dir>
     <central.autoPublish>false</central.autoPublish>
+    <central.skipPublishing>false</central.skipPublishing>
   </properties>
 
   <dependencies>
@@ -203,6 +204,7 @@
             <configuration>
               <publishingServerId>central</publishingServerId>
               <autoPublish>${central.autoPublish}</autoPublish>
+              <skipPublishing>${central.skipPublishing}</skipPublishing>
               <waitUntil>validated</waitUntil>
             </configuration>
           </plugin>

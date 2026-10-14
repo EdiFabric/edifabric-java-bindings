@@ -19,6 +19,7 @@ native build for that version is uploaded there.
 | File | Purpose |
 | --- | --- |
 | `pom.xml` | version, Central metadata, and the `release` profile (natives check, sources, javadoc, gpg, upload) |
+| `mvnw`, `mvnw.cmd`, `.mvn/` | Maven Wrapper pinned to Maven 3.9.11; Maven 3.10 adds `maven-metadata-local.xml` to the bundle, which Central rejects |
 | `scripts/fetch-natives.ps1`, `.sh` | download the four libraries into `natives/<rid>/` |
 | `scripts/SmokeTest.java` | check that the jar loads its bundled library |
 | `scripts/release.ps1`, `.sh` | fetch, build, smoke-test, and deploy from your machine |
@@ -50,8 +51,9 @@ native build for that version is uploaded there.
    | `GPG_PRIVATE_KEY` | contents of `private.asc` |
    | `GPG_PASSPHRASE` | the key's passphrase |
 
-5. For publishing from your machine only: install Maven 3.9+, JDK 11+, and gpg with the signing
-   key, and add the user token to `~/.m2/settings.xml`:
+5. For publishing from your machine only: install JDK 11+ and gpg with the signing key (the
+   scripts run Maven through `./mvnw`, which downloads Maven 3.9.11), and add the user token to
+   `~/.m2/settings.xml`:
 
    ```xml
    <settings>

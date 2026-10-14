@@ -3,7 +3,7 @@
 Build the jar with the four bundled libraries, smoke-test it, and upload it to Maven Central.
 
 .DESCRIPTION
-Needs Maven 3.9+, JDK 11+ (for the smoke test), and for a real release gpg with the signing key
+Needs JDK 11+ (Maven comes from ./mvnw), and for a real release gpg with the signing key
 plus a "central" server in ~/.m2/settings.xml holding a Central Portal user token.
 -DryRun builds and smoke-tests without signing or uploading.
 
@@ -16,10 +16,12 @@ param(
     [switch]$DryRun,
     [switch]$SkipFetch,
     [switch]$AutoPublish,
-    [string]$Maven = 'mvn'
+    [string]$Maven
 )
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
+# The wrapper pins Maven 3.9: Maven 3.10 leaves maven-metadata-local.xml in the bundle, which Central rejects.
+if (-not $Maven) { $Maven = if ($IsWindows -or $env:OS -eq 'Windows_NT') { "$PWD/mvnw.cmd" } else { "$PWD/mvnw" } }
 
 function Invoke-Checked {
     # Native tools write progress to stderr; only the exit code decides failure.

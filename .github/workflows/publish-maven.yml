@@ -27,11 +27,11 @@ jobs:
       - name: Check the release tag matches the version
         if: github.event_name == 'release'
         run: |
-          version=$(mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout)
+          version=$(sh ./mvnw -B -q help:evaluate -Dexpression=project.version -DforceStdout)
           test "${GITHUB_REF_NAME#v}" = "$version" || { echo "Tag $GITHUB_REF_NAME does not match version $version"; exit 1; }
       - run: bash scripts/fetch-natives.sh natives
-      - run: mvn -B -ntp -Prelease -Dgpg.skip verify
-      - run: mvn -B -ntp -q dependency:copy-dependencies -DincludeScope=runtime -DexcludeArtifactIds=json -DoutputDirectory=target/deps
+      - run: sh ./mvnw -B -ntp -Prelease -Dgpg.skip verify
+      - run: sh ./mvnw -B -ntp -q dependency:copy-dependencies -DincludeScope=runtime -DexcludeArtifactIds=json -DoutputDirectory=target/deps
       - uses: actions/upload-artifact@v4
         with:
           name: jar
@@ -94,7 +94,18 @@ jobs:
           server-password: MAVEN_CENTRAL_PASSWORD
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
-      - run: mvn -B -ntp -Prelease -Dcentral.autoPublish=${{ github.event_name == 'release' || inputs.auto-publish }} deploy
+      # Build the bundle without uploading it and check that every folder in it has a .pom;
+      # Maven 3.10 adds maven-metadata-local.xml, which Central rejects. ./mvnw pins Maven 3.9.
+      - name: Check the bundle
+        run: |
+          sh ./mvnw -B -ntp -Prelease -Dcentral.skipPublishing=true deploy
+          unzip -l target/central-publishing/central-bundle.zip
+          if unzip -Z1 target/central-publishing/central-bundle.zip | grep -q maven-metadata; then
+            echo "The bundle contains maven-metadata files, which Central rejects"; exit 1
+          fi
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      - run: sh ./mvnw -B -ntp -Prelease -Dcentral.autoPublish=${{ github.event_name == 'release' || inputs.auto-publish }} deploy
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
