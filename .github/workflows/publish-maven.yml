@@ -71,7 +71,7 @@ jobs:
           cd "$RUNNER_TEMP/smoke"
           rm -f edifabric-x12-native-*-sources.jar edifabric-x12-native-*-javadoc.jar
           sep=$([ "$RUNNER_OS" = Windows ] && echo ';' || echo ':')
-          java -cp "$(ls *.jar | paste -sd "$sep")" SmokeTest.java
+          java -cp "$(ls *.jar | paste -sd "$sep" -)" SmokeTest.java
 
   publish:
     needs: smoke-test

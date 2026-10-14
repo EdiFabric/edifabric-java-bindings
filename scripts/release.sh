@@ -31,7 +31,7 @@ jar=$(ls target/edifabric-x12-native-*.jar | grep -Ev -- '-(sources|javadoc)\.ja
 smoke=$(mktemp -d)
 trap 'rm -rf "$smoke"' EXIT
 cp "$jar" target/deps/*.jar scripts/SmokeTest.java "$smoke"
-(cd "$smoke" && java -cp "$(ls *.jar | paste -sd:)" SmokeTest.java)
+(cd "$smoke" && java -cp "$(ls *.jar | paste -sd: -)" SmokeTest.java)
 
 if $dry_run; then
     echo "Dry run: built $(basename "$jar"), nothing signed or uploaded."
