@@ -105,9 +105,10 @@ public final class ExampleAllFunctions {
             demoLogging("edifabric.log");
 
             try {
-                // The free and developer licenses do not support tokens. Authenticate only with serial.
-                EdiFabricX12.setSerial(options.serial);
-                System.out.println("  set_serial -> ok");
+                // ensureToken licenses the process on every plan: Community and the demo serial are checked online on
+                // every operation, and Developer, Enterprise and Perpetual get a cached token.
+                EdiFabricX12.ensureToken(options.serial, 3600);
+                System.out.println("  ensure_token -> ok");
 
                 demoSetLocalMap();
 

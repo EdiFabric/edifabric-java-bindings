@@ -70,7 +70,7 @@ native build for that version is uploaded there.
 ## Release
 
 1. Upload the new native build to `https://www.edifabric.com/download/`.
-2. Set `<version>` in `pom.xml` to the native library version, for example `1.1.1`, update the
+2. Set `<version>` in `pom.xml` to the native library version, for example `1.2.0`, update the
    version in `README.md`, and commit.
 3. Validate the jar:
    - GitHub: **Actions > Publish to Maven Central > Run workflow** with **publish** cleared
@@ -80,7 +80,7 @@ native build for that version is uploaded there.
    **Deployments** in the Central Portal, which shows its validation result. Click **Drop**
    when done, then continue with step 5. (Clicking **Publish** instead releases it, and step 5
    would then fail because the version already exists.)
-5. Create a GitHub release with the tag `v<version>`, for example `v1.1.1`. Publishing the
+5. Create a GitHub release with the tag `v<version>`, for example `v1.2.0`. Publishing the
    release runs the workflow and publishes automatically; the workflow fails if the tag and the
    version differ. Locally, the equivalent is `./scripts/release.ps1 -AutoPublish` or
    `scripts/release.sh --auto-publish`.
