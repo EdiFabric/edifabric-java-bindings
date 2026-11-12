@@ -6,7 +6,7 @@
 
   <groupId>com.edifabric</groupId>
   <artifactId>edifabric-x12-native</artifactId>
-  <version>1.2.1</version>
+  <version>1.2.2</version>
   <name>ediFabric Native X12 — Java bindings</name>
   <description>JNA bindings for the ediFabric Native X12 shared library, with the library bundled for Windows x64, Linux x64/arm64 and macOS arm64</description>
   <url>https://github.com/EdiFabric/edifabric-java-bindings</url>

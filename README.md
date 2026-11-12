@@ -24,11 +24,11 @@ Add the bindings from Maven Central:
 <dependency>
   <groupId>com.edifabric</groupId>
   <artifactId>edifabric-x12-native</artifactId>
-  <version>1.2.1</version>
+  <version>1.2.2</version>
 </dependency>
 ```
 
-Gradle: `implementation("com.edifabric:edifabric-x12-native:1.2.1")`.
+Gradle: `implementation("com.edifabric:edifabric-x12-native:1.2.2")`.
 
 The jar bundles the ediFabric Native library for Windows x64, Linux x64 and arm64
 (glibc 2.34 or later), and macOS arm64 (12 or later), and brings in JNA. On first use it
